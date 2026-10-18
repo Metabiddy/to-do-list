@@ -1,16 +1,14 @@
 import TodoItem from "@/components/TodoItem";
-import type { Todo } from "@/types/todo";
+import { getAllTodos } from "@/lib/todos";
 
-// Todo[] means "an array of Todo objects"
-// These three items are hard-coded for now (no API yet)
-const todos: Todo[] = [
-  { id: 1, title: "Learn what a component is", completed: true },
-  { id: 2, title: "Pass data with props", completed: false },
-  { id: 3, title: "Describe data with a TypeScript interface", completed: false },
-];
+// Allow this page to wait for uncached API data (fixes the Dev Overlay error)
+export const instant = false;
 
-// This is a React component — a function that returns JSX (HTML-like UI)
-export default function Home() {
+// "async" on a page lets us await API data before rendering
+export default async function Home() {
+  // Wait for the fake backend to return the to-do array
+  const todos = await getAllTodos();
+
   return (
     // className uses Tailwind utility classes instead of a separate CSS file
     <main className="min-h-screen bg-slate-100 px-4 py-12">
