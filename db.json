@@ -1,0 +1,24 @@
+{
+  "todos": [
+    {
+      "id": 1,
+      "title": "Learn what a component is",
+      "completed": true
+    },
+    {
+      "id": 2,
+      "title": "Pass data with props",
+      "completed": false
+    },
+    {
+      "id": 3,
+      "title": "Fetch to-dos from an API",
+      "completed": false
+    },
+    {
+      "title": "Buy Milk",
+      "completed": false,
+      "id": 4
+    }
+  ]
+}
