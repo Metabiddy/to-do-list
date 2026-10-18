@@ -35,3 +35,33 @@ export async function createTodo(title: string): Promise<Todo> {
   const todo: Todo = await response.json();
   return todo;
 }
+
+// PATCH updates some fields on an existing to-do (here: completed)
+export async function updateTodo(
+  id: number,
+  updates: Partial<Pick<Todo, "title" | "completed">>,
+): Promise<Todo> {
+  const response = await fetch(`${API_URL}/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(updates),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to update todo");
+  }
+
+  const todo: Todo = await response.json();
+  return todo;
+}
+
+// DELETE removes a to-do permanently from the fake backend
+export async function deleteTodo(id: number): Promise<void> {
+  const response = await fetch(`${API_URL}/${id}`, {
+    method: "DELETE",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to delete todo");
+  }
+}

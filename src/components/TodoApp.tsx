@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import TodoItem from "@/components/TodoItem";
-import { createTodo } from "@/lib/todos";
+import { createTodo, deleteTodo, updateTodo } from "@/lib/todos";
 import type { Todo } from "@/types/todo";
 
 type TodoAppProps = {
@@ -28,6 +28,19 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
     setIsDialogOpen(false);
   }
 
+  // Same pattern as Add: event → API → update state
+  async function handleToggle(todo: Todo) {
+    const updated = await updateTodo(todo.id, { completed: !todo.completed });
+    setTodos((current) =>
+      current.map((item) => (item.id === updated.id ? updated : item)),
+    );
+  }
+
+  async function handleDelete(id: number) {
+    await deleteTodo(id);
+    setTodos((current) => current.filter((item) => item.id !== id));
+  }
+
   return (
     <div className="mx-auto max-w-lg">
       <div className="mb-6 flex items-center justify-between gap-4">
@@ -43,7 +56,12 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
 
       <ul className="space-y-3">
         {todos.map((todo) => (
-          <TodoItem key={todo.id} todo={todo} />
+          <TodoItem
+            key={todo.id}
+            todo={todo}
+            onToggle={handleToggle}
+            onDelete={handleDelete}
+          />
         ))}
       </ul>
 
