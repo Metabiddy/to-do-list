@@ -1,4 +1,5 @@
 // "import type" only brings in a TypeScript type (not real runtime code)
+import { Button } from "@/components/ui/button";
 import type { Todo } from "@/types/todo";
 
 // Props = the inputs this component receives from its parent
@@ -31,13 +32,14 @@ export default function TodoItem({ todo, onToggle, onDelete }: TodoItemProps) {
       >
         {todo.title}
       </span>
-      <button
+      <Button
         type="button"
+        variant="destructive"
+        size="sm"
         onClick={() => onDelete(todo.id)}
-        className="rounded-md px-2 py-1 text-sm text-red-600 hover:bg-red-50"
       >
         Delete
-      </button>
+      </Button>
     </li>
   );
 }

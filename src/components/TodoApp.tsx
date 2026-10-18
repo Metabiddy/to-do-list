@@ -3,6 +3,15 @@
 import Link from "next/link";
 import { useState } from "react";
 import TodoItem from "@/components/TodoItem";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { createTodo, deleteTodo, updateTodo } from "@/lib/todos";
 import type { Todo } from "@/types/todo";
 
@@ -46,13 +55,9 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
     <div className="mx-auto max-w-lg">
       <div className="mb-2 flex items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-slate-900">My To-do List</h1>
-        <button
-          type="button"
-          onClick={() => setIsDialogOpen(true)}
-          className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
-        >
+        <Button type="button" onClick={() => setIsDialogOpen(true)}>
           Add Task
-        </button>
+        </Button>
       </div>
       {/* app/about/page.tsx maps to the /about URL */}
       <p className="mb-6">
@@ -72,43 +77,36 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
         ))}
       </ul>
 
-      {isDialogOpen && (
-        <div className="fixed inset-0 z-10 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg">
-            <h2 className="mb-4 text-lg font-semibold text-slate-900">
-              Add a task
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <label className="block text-sm text-slate-700">
-                Title
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
-                  placeholder="e.g. Buy milk"
-                  autoFocus
-                />
-              </label>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setIsDialogOpen(false)}
-                  className="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
-                >
-                  Save
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add a task</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <label className="block text-sm text-slate-700">
+              Title
+              <Input
+                type="text"
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                className="mt-1"
+                placeholder="e.g. Buy milk"
+                autoFocus
+              />
+            </label>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit">Save</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
