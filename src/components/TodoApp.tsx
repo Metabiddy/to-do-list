@@ -1,5 +1,6 @@
 "use client"; // needed so we can use useState and handle button clicks in the browser
 
+import Link from "next/link";
 import { useState } from "react";
 import TodoItem from "@/components/TodoItem";
 import { createTodo, deleteTodo, updateTodo } from "@/lib/todos";
@@ -43,16 +44,22 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
 
   return (
     <div className="mx-auto max-w-lg">
-      <div className="mb-6 flex items-center justify-between gap-4">
+      <div className="mb-2 flex items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-slate-900">My To-do List</h1>
         <button
           type="button"
           onClick={() => setIsDialogOpen(true)}
-          className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
+          className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700"
         >
           Add Task
         </button>
       </div>
+      {/* app/about/page.tsx maps to the /about URL */}
+      <p className="mb-6">
+        <Link href="/about" className="text-sm text-teal-700 underline hover:text-teal-800">
+          About this app
+        </Link>
+      </p>
 
       <ul className="space-y-3">
         {todos.map((todo) => (
