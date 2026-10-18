@@ -19,3 +19,19 @@ export async function getAllTodos(): Promise<Todo[]> {
   const todos: Todo[] = await response.json();
   return todos;
 }
+
+// POST a new to-do to the API; json-server returns the saved object (with id)
+export async function createTodo(title: string): Promise<Todo> {
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ title, completed: false }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to create todo");
+  }
+
+  const todo: Todo = await response.json();
+  return todo;
+}
