@@ -38,6 +38,7 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
   // useState: when these values change, React re-renders the UI
   const [todos, setTodos] = useState<Todo[]>(initialTodos);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // React Hook Form tracks values + errors; Zod schema checks them
   const form = useForm<TaskFormValues>({
@@ -45,26 +46,45 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
     defaultValues: { title: "" },
   });
 
+  // Only runs after Zod validation passes (via form.handleSubmit)
   async function onAddTask(values: TaskFormValues) {
-    // 1) save via the API  2) update state so the new task appears straight away
-    const newTodo = await createTodo(values.title);
-    setTodos((current) => [...current, newTodo]);
+    try {
+      // 1) save via the API  2) update state so the new task appears straight away
+      const newTodo = await createTodo(values.title);
+      setTodos((current) => [...current, newTodo]);
 
-    form.reset();
-    setIsDialogOpen(false);
+      form.reset();
+      setIsDialogOpen(false);
+    } catch {
+      // Keep the typed title and dialog open so the user can retry
+      form.setError("root", {
+        message: "Could not save the task. Please try again.",
+      });
+    }
   }
 
   // Same pattern as Add: event → API → update state
   async function handleToggle(todo: Todo) {
-    const updated = await updateTodo(todo.id, { completed: !todo.completed });
-    setTodos((current) =>
-      current.map((item) => (item.id === updated.id ? updated : item)),
-    );
+    try {
+      const updated = await updateTodo(todo.id, { completed: !todo.completed });
+      setTodos((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setActionError(null);
+    } catch {
+      setActionError("Could not update the task. Please try again.");
+    }
   }
 
   async function handleDelete(id: number) {
-    await deleteTodo(id);
-    setTodos((current) => current.filter((item) => item.id !== id));
+    try {
+      await deleteTodo(id);
+      setTodos((current) => current.filter((item) => item.id !== id));
+      setActionError(null);
+    } catch {
+      // Keep the task in the list so the user can retry
+      setActionError("Could not delete the task. Please try again.");
+    }
   }
 
   function handleDialogOpenChange(open: boolean) {
@@ -88,6 +108,12 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
           About this app
         </Link>
       </p>
+
+      {actionError && (
+        <p className="mb-4 text-sm text-destructive" role="alert">
+          {actionError}
+        </p>
+      )}
 
       <Table>
         <TableHeader>
@@ -130,6 +156,7 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
               />
               <FieldError errors={[form.formState.errors.title]} />
             </Field>
+            <FieldError errors={[form.formState.errors.root]} />
             <DialogFooter>
               <Button
                 type="button"
