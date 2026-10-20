@@ -26,17 +26,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { createTodo, deleteTodo, updateTodo } from "@/lib/todos";
+import { createTodo, deleteTodo, getAllTodos, updateTodo } from "@/lib/todos";
 import { taskSchema, type TaskFormValues } from "@/lib/task-schema";
+import { useQuery } from "@tanstack/react-query";
 import type { Todo } from "@/types/todo";
 
-type TodoAppProps = {
-  initialTodos: Todo[]; // list loaded on the server, then handed to this client component
-};
-
-export default function TodoApp({ initialTodos }: TodoAppProps) {
-  // useState: when these values change, React re-renders the UI
-  const [todos, setTodos] = useState<Todo[]>(initialTodos);
+export default function TodoApp() {
+  // Server state: the task list lives on json-server and is cached by TanStack Query
+  const { data: todos = [], refetch } = useQuery({
+    queryKey: ["todos"],
+    queryFn: getAllTodos,
+  });
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -50,8 +50,8 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
   async function onAddTask(values: TaskFormValues) {
     try {
       // 1) save via the API  2) update state so the new task appears straight away
-      const newTodo = await createTodo(values.title);
-      setTodos((current) => [...current, newTodo]);
+      await createTodo(values.title);
+      await refetch();
 
       form.reset();
       setIsDialogOpen(false);
@@ -66,10 +66,8 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
   // Same pattern as Add: event → API → update state
   async function handleToggle(todo: Todo) {
     try {
-      const updated = await updateTodo(todo.id, { completed: !todo.completed });
-      setTodos((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item)),
-      );
+      await updateTodo(todo.id, { completed: !todo.completed });
+      await refetch();
       setActionError(null);
     } catch {
       setActionError("Could not update the task. Please try again.");
@@ -79,7 +77,7 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
   async function handleDelete(id: number) {
     try {
       await deleteTodo(id);
-      setTodos((current) => current.filter((item) => item.id !== id));
+      await refetch();
       setActionError(null);
     } catch {
       // Keep the task in the list so the user can retry
