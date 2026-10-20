@@ -35,7 +35,6 @@ export default function TodoApp() {
   // Server state: the task list lives on json-server and is cached by TanStack Query
   const {
     data: todos = [],
-    refetch,
     isPending,
     isError,
   } = useQuery({
@@ -47,6 +46,21 @@ export default function TodoApp() {
   // A mutation changes server data; invalidating "todos" refreshes the list
   const createMutation = useMutation({
     mutationFn: createTodo,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (todo: Todo) =>
+      updateTodo(todo.id, { completed: !todo.completed }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteTodo,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["todos"] });
     },
@@ -80,8 +94,7 @@ export default function TodoApp() {
   // Same pattern as Add: event → API → update state
   async function handleToggle(todo: Todo) {
     try {
-      await updateTodo(todo.id, { completed: !todo.completed });
-      await refetch();
+      await updateMutation.mutateAsync(todo);
       setActionError(null);
     } catch {
       setActionError("Could not update the task. Please try again.");
@@ -90,8 +103,7 @@ export default function TodoApp() {
 
   async function handleDelete(id: number) {
     try {
-      await deleteTodo(id);
-      await refetch();
+      await deleteMutation.mutateAsync(id);
       setActionError(null);
     } catch {
       // Keep the task in the list so the user can retry
