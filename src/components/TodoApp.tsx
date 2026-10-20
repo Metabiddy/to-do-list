@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import TodoItem from "@/components/TodoItem";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +13,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Field,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -20,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { createTodo, deleteTodo, updateTodo } from "@/lib/todos";
+import { taskSchema, type TaskFormValues } from "@/lib/task-schema";
 import type { Todo } from "@/types/todo";
 
 type TodoAppProps = {
@@ -30,39 +38,67 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
   // useState: when these values change, React re-renders the UI
   const [todos, setTodos] = useState<Todo[]>(initialTodos);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [title, setTitle] = useState("");
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  async function handleSubmit(event: React.SyntheticEvent<HTMLFormElement>) {
-    event.preventDefault(); // stop the browser from doing a full page reload
-    const trimmed = title.trim();
-    if (!trimmed) return;
+  // React Hook Form tracks values + errors; Zod schema checks them
+  const form = useForm<TaskFormValues>({
+    resolver: zodResolver(taskSchema),
+    defaultValues: { title: "" },
+  });
 
-    // 1) save via the API  2) update state so the new task appears straight away
-    const newTodo = await createTodo(trimmed);
-    setTodos((current) => [...current, newTodo]);
+  // Only runs after Zod validation passes (via form.handleSubmit)
+  async function onAddTask(values: TaskFormValues) {
+    try {
+      // 1) save via the API  2) update state so the new task appears straight away
+      const newTodo = await createTodo(values.title);
+      setTodos((current) => [...current, newTodo]);
 
-    setTitle("");
-    setIsDialogOpen(false);
+      form.reset();
+      setIsDialogOpen(false);
+    } catch {
+      // Keep the typed title and dialog open so the user can retry
+      form.setError("root", {
+        message: "Could not save the task. Please try again.",
+      });
+    }
   }
 
   // Same pattern as Add: event → API → update state
   async function handleToggle(todo: Todo) {
-    const updated = await updateTodo(todo.id, { completed: !todo.completed });
-    setTodos((current) =>
-      current.map((item) => (item.id === updated.id ? updated : item)),
-    );
+    try {
+      const updated = await updateTodo(todo.id, { completed: !todo.completed });
+      setTodos((current) =>
+        current.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setActionError(null);
+    } catch {
+      setActionError("Could not update the task. Please try again.");
+    }
   }
 
   async function handleDelete(id: number) {
-    await deleteTodo(id);
-    setTodos((current) => current.filter((item) => item.id !== id));
+    try {
+      await deleteTodo(id);
+      setTodos((current) => current.filter((item) => item.id !== id));
+      setActionError(null);
+    } catch {
+      // Keep the task in the list so the user can retry
+      setActionError("Could not delete the task. Please try again.");
+    }
+  }
+
+  function handleDialogOpenChange(open: boolean) {
+    setIsDialogOpen(open);
+    if (!open) {
+      form.reset();
+    }
   }
 
   return (
     <div className="mx-auto max-w-lg">
       <div className="mb-2 flex items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-slate-900">My To-do List</h1>
-        <Button type="button" onClick={() => setIsDialogOpen(true)}>
+        <Button type="button" variant="default" onClick={() => setIsDialogOpen(true)}>
           Add Task
         </Button>
       </div>
@@ -72,6 +108,12 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
           About this app
         </Link>
       </p>
+
+      {actionError && (
+        <p className="mb-4 text-sm text-destructive" role="alert">
+          {actionError}
+        </p>
+      )}
 
       <Table>
         <TableHeader>
@@ -93,28 +135,33 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
         </TableBody>
       </Table>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Add a task</DialogTitle>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <label className="block text-sm text-slate-700">
-              Title
+          <form
+            onSubmit={form.handleSubmit(onAddTask)}
+            className="space-y-4"
+          >
+            <Field data-invalid={!!form.formState.errors.title}>
+              <FieldLabel htmlFor="title">Title</FieldLabel>
               <Input
+                id="title"
                 type="text"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                className="mt-1"
                 placeholder="e.g. Buy milk"
                 autoFocus
+                aria-invalid={!!form.formState.errors.title}
+                {...form.register("title")}
               />
-            </label>
+              <FieldError errors={[form.formState.errors.title]} />
+            </Field>
+            <FieldError errors={[form.formState.errors.root]} />
             <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setIsDialogOpen(false)}
+                onClick={() => handleDialogOpenChange(false)}
               >
                 Cancel
               </Button>
