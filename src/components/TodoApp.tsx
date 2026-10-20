@@ -28,15 +28,30 @@ import {
 } from "@/components/ui/table";
 import { createTodo, deleteTodo, getAllTodos, updateTodo } from "@/lib/todos";
 import { taskSchema, type TaskFormValues } from "@/lib/task-schema";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Todo } from "@/types/todo";
 
 export default function TodoApp() {
   // Server state: the task list lives on json-server and is cached by TanStack Query
-  const { data: todos = [], refetch } = useQuery({
+  const {
+    data: todos = [],
+    refetch,
+    isPending,
+    isError,
+  } = useQuery({
     queryKey: ["todos"],
     queryFn: getAllTodos,
   });
+  const queryClient = useQueryClient();
+
+  // A mutation changes server data; invalidating "todos" refreshes the list
+  const createMutation = useMutation({
+    mutationFn: createTodo,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
+    },
+  });
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -50,8 +65,7 @@ export default function TodoApp() {
   async function onAddTask(values: TaskFormValues) {
     try {
       // 1) save via the API  2) update state so the new task appears straight away
-      await createTodo(values.title);
-      await refetch();
+      await createMutation.mutateAsync(values.title);
 
       form.reset();
       setIsDialogOpen(false);
@@ -113,25 +127,33 @@ export default function TodoApp() {
         </p>
       )}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-10">Done</TableHead>
-            <TableHead>Task</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {todos.map((todo) => (
-            <TodoItem
-              key={todo.id}
-              todo={todo}
-              onToggle={handleToggle}
-              onDelete={handleDelete}
-            />
-          ))}
-        </TableBody>
-      </Table>
+      {isPending ? (
+        <p className="text-sm text-slate-600">Loading tasks...</p>
+      ) : isError ? (
+        <p className="text-sm text-destructive" role="alert">
+          Could not load tasks. Please try again.
+        </p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">Done</TableHead>
+              <TableHead>Task</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {todos.map((todo) => (
+              <TodoItem
+                key={todo.id}
+                todo={todo}
+                onToggle={handleToggle}
+                onDelete={handleDelete}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent>
