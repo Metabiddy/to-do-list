@@ -26,17 +26,46 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { createTodo, deleteTodo, updateTodo } from "@/lib/todos";
+import { createTodo, deleteTodo, getAllTodos, updateTodo } from "@/lib/todos";
 import { taskSchema, type TaskFormValues } from "@/lib/task-schema";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Todo } from "@/types/todo";
 
-type TodoAppProps = {
-  initialTodos: Todo[]; // list loaded on the server, then handed to this client component
-};
+export default function TodoApp() {
+  // Server state: the task list lives on json-server and is cached by TanStack Query
+  const {
+    data: todos = [],
+    isPending,
+    isError,
+  } = useQuery({
+    queryKey: ["todos"],
+    queryFn: getAllTodos,
+  });
+  const queryClient = useQueryClient();
 
-export default function TodoApp({ initialTodos }: TodoAppProps) {
-  // useState: when these values change, React re-renders the UI
-  const [todos, setTodos] = useState<Todo[]>(initialTodos);
+  // A mutation changes server data; invalidating "todos" refreshes the list
+  const createMutation = useMutation({
+    mutationFn: createTodo,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (todo: Todo) =>
+      updateTodo(todo.id, { completed: !todo.completed }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteTodo,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
+    },
+  });
+
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -50,8 +79,7 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
   async function onAddTask(values: TaskFormValues) {
     try {
       // 1) save via the API  2) update state so the new task appears straight away
-      const newTodo = await createTodo(values.title);
-      setTodos((current) => [...current, newTodo]);
+      await createMutation.mutateAsync(values.title);
 
       form.reset();
       setIsDialogOpen(false);
@@ -66,10 +94,7 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
   // Same pattern as Add: event → API → update state
   async function handleToggle(todo: Todo) {
     try {
-      const updated = await updateTodo(todo.id, { completed: !todo.completed });
-      setTodos((current) =>
-        current.map((item) => (item.id === updated.id ? updated : item)),
-      );
+      await updateMutation.mutateAsync(todo);
       setActionError(null);
     } catch {
       setActionError("Could not update the task. Please try again.");
@@ -78,8 +103,7 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
 
   async function handleDelete(id: number) {
     try {
-      await deleteTodo(id);
-      setTodos((current) => current.filter((item) => item.id !== id));
+      await deleteMutation.mutateAsync(id);
       setActionError(null);
     } catch {
       // Keep the task in the list so the user can retry
@@ -115,25 +139,33 @@ export default function TodoApp({ initialTodos }: TodoAppProps) {
         </p>
       )}
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-10">Done</TableHead>
-            <TableHead>Task</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {todos.map((todo) => (
-            <TodoItem
-              key={todo.id}
-              todo={todo}
-              onToggle={handleToggle}
-              onDelete={handleDelete}
-            />
-          ))}
-        </TableBody>
-      </Table>
+      {isPending ? (
+        <p className="text-sm text-slate-600">Loading tasks...</p>
+      ) : isError ? (
+        <p className="text-sm text-destructive" role="alert">
+          Could not load tasks. Please try again.
+        </p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-10">Done</TableHead>
+              <TableHead>Task</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {todos.map((todo) => (
+              <TodoItem
+                key={todo.id}
+                todo={todo}
+                onToggle={handleToggle}
+                onDelete={handleDelete}
+              />
+            ))}
+          </TableBody>
+        </Table>
+      )}
 
       <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
         <DialogContent>
